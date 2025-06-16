@@ -61,7 +61,8 @@ export interface PackageSearchResult {
   gem_uri: string;
   documentation_uri?: string | undefined;
   source_code_uri?: string | undefined;
-  score?: number | undefined; // Calculated search relevance score
+  score?: number | undefined; // Calculated popularity score
+  quality_score?: number | undefined; // Calculated quality score
 }
 
 // Tool Parameters
@@ -94,6 +95,7 @@ export interface PackageReadmeResponse {
   installation: InstallationInfo;
   basic_info: PackageBasicInfo;
   repository?: RepositoryInfo | undefined;
+  exists: boolean;
 }
 
 export interface PackageInfoResponse {
@@ -110,6 +112,7 @@ export interface PackageInfoResponse {
   homepage?: string | undefined;
   documentation_uri?: string | undefined;
   source_code_uri?: string | undefined;
+  exists: boolean;
 }
 
 export interface SearchPackagesResponse {

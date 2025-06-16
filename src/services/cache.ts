@@ -171,10 +171,11 @@ export const createCacheKey = {
   gemReadme: (gemName: string, version: string): string => 
     `gem_readme:${gemName}:${version}`,
   
-  searchResults: (query: string, limit: number, popularity?: number): string => {
+  searchResults: (query: string, limit: number, popularity?: number, quality?: number): string => {
     const queryHash = Buffer.from(query).toString('base64');
     const params = [queryHash, limit.toString()];
     if (popularity !== undefined) {params.push(`p:${popularity}`);}
+    if (quality !== undefined) {params.push(`q:${quality}`);}
     return `search:${params.join(':')}`;
   },
   

@@ -83,6 +83,7 @@ export async function getPackageInfo(params: GetPackageInfoParams): Promise<Pack
       homepage: gemInfo.homepage_uri || gemInfo.metadata?.homepage_uri || undefined,
       documentation_uri: gemInfo.documentation_uri || gemInfo.metadata?.documentation_uri || undefined,
       source_code_uri: gemInfo.source_code_uri || gemInfo.metadata?.source_code_uri || undefined,
+      exists: true,
     };
 
     // Cache the response

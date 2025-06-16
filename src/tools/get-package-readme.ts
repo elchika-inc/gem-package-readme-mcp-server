@@ -4,6 +4,7 @@ import { cache, createCacheKey } from '../services/cache.js';
 import { rubygemsApi } from '../services/rubygems-api.js';
 import { githubApi } from '../services/github-api.js';
 import { readmeParser } from '../services/readme-parser.js';
+import { searchPackages } from './search-packages.js';
 import {
   GetPackageReadmeParams,
   PackageReadmeResponse,
@@ -32,6 +33,18 @@ export async function getPackageReadme(params: GetPackageReadmeParams): Promise<
   }
 
   try {
+    // First, search to verify package exists
+    logger.debug(`Searching for package existence: ${package_name}`);
+    const searchResult = await searchPackages({ query: package_name, limit: 10 });
+    
+    // Check if the exact package name exists in search results
+    const exactMatch = searchResult.packages.find((pkg: any) => pkg.name === package_name);
+    if (!exactMatch) {
+      throw new Error(`Package '${package_name}' not found in RubyGems registry`);
+    }
+    
+    logger.debug(`Package found in search results: ${package_name}`);
+
     // Get gem info from RubyGems
     let gemInfo;
     if (version === 'latest') {
@@ -113,6 +126,7 @@ export async function getPackageReadme(params: GetPackageReadmeParams): Promise<
       installation,
       basic_info: basicInfo,
       repository: repositoryInfo || undefined,
+      exists: true,
     };
 
     // Cache the response
