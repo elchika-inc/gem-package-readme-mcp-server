@@ -30,7 +30,7 @@ export function validateGemName(gemName: string): void {
   }
 
   // Reserved names
-  const reservedNames = ['gem', 'ruby', 'rubygems', 'rails'];
+  const reservedNames = ['gem', 'ruby', 'rubygems'];
   if (reservedNames.includes(trimmed.toLowerCase())) {
     throw new GemReadmeMcpError('Gem name cannot be a reserved word', 'INVALID_GEM_NAME');
   }

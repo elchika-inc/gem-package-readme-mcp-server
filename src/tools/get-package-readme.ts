@@ -4,7 +4,6 @@ import { cache, createCacheKey } from '../services/cache.js';
 import { rubygemsApi } from '../services/rubygems-api.js';
 import { githubApi } from '../services/github-api.js';
 import { readmeParser } from '../services/readme-parser.js';
-import { searchPackages } from './search-packages.js';
 import {
   GetPackageReadmeParams,
   PackageReadmeResponse,
@@ -33,25 +32,48 @@ export async function getPackageReadme(params: GetPackageReadmeParams): Promise<
   }
 
   try {
-    // First, search to verify package exists
-    logger.debug(`Searching for package existence: ${package_name}`);
-    const searchResult = await searchPackages({ query: package_name, limit: 10 });
-    
-    // Check if the exact package name exists in search results
-    const exactMatch = searchResult.packages.find((pkg: any) => pkg.name === package_name);
-    if (!exactMatch) {
-      throw new Error(`Package '${package_name}' not found in RubyGems registry`);
-    }
-    
-    logger.debug(`Package found in search results: ${package_name}`);
-
-    // Get gem info from RubyGems
+    // Get gem info from RubyGems directly
     let gemInfo;
-    if (version === 'latest') {
-      gemInfo = await rubygemsApi.getGemInfo(package_name);
-    } else {
-      gemInfo = await rubygemsApi.getSpecificVersion(package_name, version);
+    
+    try {
+      logger.debug(`Getting gem info for: ${package_name}@${version}`);
+      if (version === 'latest') {
+        gemInfo = await rubygemsApi.getGemInfo(package_name);
+      } else {
+        gemInfo = await rubygemsApi.getSpecificVersion(package_name, version);
+      }
+    } catch (error) {
+      // If gem not found, return a response indicating non-existence
+      logger.debug(`Gem not found: ${package_name}`);
+      return {
+        package_name,
+        version: version || 'latest',
+        description: 'Gem not found',
+        readme_content: '',
+        usage_examples: [],
+        installation: {
+          gem: `gem install ${package_name}`,
+          bundler: `bundle add ${package_name}`,
+          gemfile: `gem '${package_name}'`,
+        },
+        basic_info: {
+          name: package_name,
+          version: version || 'latest',
+          description: 'Gem not found',
+          platform: 'ruby',
+          homepage: undefined,
+          documentation_uri: undefined,
+          source_code_uri: undefined,
+          bug_tracker_uri: undefined,
+          license: 'Unknown',
+          authors: [],
+          licenses: [],
+        },
+        exists: false,
+      };
     }
+    
+    logger.debug(`Gem info retrieved for: ${package_name}@${gemInfo.version}`);
 
     const actualVersion = gemInfo.version;
 
