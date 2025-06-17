@@ -1,8 +1,10 @@
 # Ruby Gem Package README MCP Server
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![npm version](https://img.shields.io/npm/v/gem-package-readme-mcp-server)](https://www.npmjs.com/package/gem-package-readme-mcp-server)
+[![npm downloads](https://img.shields.io/npm/dm/gem-package-readme-mcp-server)](https://www.npmjs.com/package/gem-package-readme-mcp-server)
+[![GitHub stars](https://img.shields.io/github/stars/naoto24kawa/package-readme-mcp-servers)](https://github.com/naoto24kawa/package-readme-mcp-servers)
+[![GitHub issues](https://img.shields.io/github/issues/naoto24kawa/package-readme-mcp-servers)](https://github.com/naoto24kawa/package-readme-mcp-servers/issues)
+[![license](https://img.shields.io/npm/l/gem-package-readme-mcp-server)](https://github.com/naoto24kawa/package-readme-mcp-servers/blob/main/LICENSE)
 
 An MCP (Model Context Protocol) server that provides tools for fetching Ruby gem README content, usage examples, and package information from RubyGems.org.
 
