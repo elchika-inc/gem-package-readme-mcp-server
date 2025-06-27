@@ -6,7 +6,29 @@ import {
   SearchPackagesParams,
   SearchPackagesResponse,
   PackageSearchResult,
+  RubyGemsSearchResponse,
 } from '../types/index.js';
+
+// Score calculation constants
+const MAX_DOWNLOADS_FOR_SCORE = 10_000_000;
+const BASE_QUALITY_SCORE = 0.5;
+const QUALITY_BONUS = 0.1;
+
+function calculatePopularityScore(downloads: number): number {
+  return downloads > 0 ? Math.min(downloads / MAX_DOWNLOADS_FOR_SCORE, 1) : 0;
+}
+
+function calculateQualityScore(gem: RubyGemsSearchResponse): number {
+  let score = BASE_QUALITY_SCORE;
+  
+  if (gem.documentation_uri) score += QUALITY_BONUS;
+  if (gem.source_code_uri) score += QUALITY_BONUS;
+  if (gem.homepage_uri) score += QUALITY_BONUS;
+  if (gem.licenses?.length > 0) score += QUALITY_BONUS;
+  if (gem.info?.length > 50) score += QUALITY_BONUS;
+  
+  return Math.min(score, 1);
+}
 
 export async function searchPackages(params: SearchPackagesParams): Promise<SearchPackagesResponse> {
   const { 
@@ -43,41 +65,22 @@ export async function searchPackages(params: SearchPackagesParams): Promise<Sear
     const searchResults = await rubygemsApi.searchGems(query, limit);
     
     // Transform results to our format
-    let packages: PackageSearchResult[] = searchResults.map(gem => {
-      // Calculate a simple score based on downloads (popularity score)
-      let popularityScore = 0;
-      if (gem.downloads > 0) {
-        // Normalize downloads to a 0-1 scale (rough approximation)
-        // Popular gems can have millions of downloads
-        popularityScore = Math.min(gem.downloads / 10000000, 1);
-      }
-
-      // Calculate quality score (simplified - based on presence of metadata)
-      let qualityScore = 0.5; // base score
-      if (gem.documentation_uri) qualityScore += 0.1;
-      if (gem.source_code_uri) qualityScore += 0.1;
-      if (gem.homepage_uri) qualityScore += 0.1;
-      if (gem.licenses && gem.licenses.length > 0) qualityScore += 0.1;
-      if (gem.info && gem.info.length > 50) qualityScore += 0.1; // decent description
-      qualityScore = Math.min(qualityScore, 1);
-
-      return {
-        name: gem.name,
-        version: gem.version,
-        description: gem.info || 'No description available',
-        authors: gem.authors,
-        licenses: gem.licenses || [],
-        downloads: gem.downloads,
-        version_downloads: gem.version_downloads,
-        homepage_uri: gem.homepage_uri,
-        project_uri: gem.project_uri,
-        gem_uri: gem.gem_uri,
-        documentation_uri: gem.documentation_uri,
-        source_code_uri: gem.source_code_uri,
-        score: popularityScore,
-        quality_score: qualityScore,
-      };
-    });
+    let packages: PackageSearchResult[] = searchResults.map(gem => ({
+      name: gem.name,
+      version: gem.version,
+      description: gem.info || 'No description available',
+      authors: gem.authors,
+      licenses: gem.licenses || [],
+      downloads: gem.downloads,
+      version_downloads: gem.version_downloads,
+      homepage_uri: gem.homepage_uri,
+      project_uri: gem.project_uri,
+      gem_uri: gem.gem_uri,
+      documentation_uri: gem.documentation_uri,
+      source_code_uri: gem.source_code_uri,
+      score: calculatePopularityScore(gem.downloads),
+      quality_score: calculateQualityScore(gem),
+    }));
 
     // Filter results based on quality if specified
     if (quality !== undefined) {
@@ -102,8 +105,8 @@ export async function searchPackages(params: SearchPackagesParams): Promise<Sear
       packages,
     };
 
-    // Cache the response (shorter TTL for search results)
-    cache.set(cacheKey, response, 600000); // 10 minutes
+    // Cache the response with default search TTL
+    cache.set(cacheKey, response);
 
     logger.info(`Successfully searched gems: "${query}", found ${response.total} results`);
     return response;

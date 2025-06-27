@@ -46,43 +46,91 @@ export class ReadmeParser {
     let inUsageSection = false;
     let sectionLevel = 0;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const isHeader = /^#{1,6}\s/.test(line);
-      
-      if (isHeader) {
-        const level = (line.match(/^#+/) || [''])[0].length;
-        const isUsageHeader = this.isUsageHeader(line);
-
-        if (isUsageHeader) {
-          // Start new usage section
-          if (currentSection.length > 0) {
-            sections.push(currentSection.join('\n'));
-          }
-          currentSection = [line];
-          inUsageSection = true;
-          sectionLevel = level;
-        } else if (inUsageSection && level <= sectionLevel) {
-          // End of current usage section
-          if (currentSection.length > 0) {
-            sections.push(currentSection.join('\n'));
-          }
-          currentSection = [];
-          inUsageSection = false;
-        } else if (inUsageSection) {
-          currentSection.push(line);
-        }
+    for (const line of lines) {
+      if (this.isHeaderLine(line)) {
+        const result = this.processHeaderLine(
+          line, 
+          currentSection, 
+          inUsageSection, 
+          sectionLevel
+        );
+        
+        sections.push(...result.completedSections);
+        currentSection = result.newCurrentSection;
+        inUsageSection = result.inUsageSection;
+        sectionLevel = result.sectionLevel;
       } else if (inUsageSection) {
         currentSection.push(line);
       }
     }
 
-    // Add final section if exists
+    this.addFinalSection(currentSection, sections);
+    return sections;
+  }
+
+  private isHeaderLine(line: string): boolean {
+    return /^#{1,6}\s/.test(line);
+  }
+
+  private processHeaderLine(
+    line: string,
+    currentSection: string[],
+    inUsageSection: boolean,
+    sectionLevel: number
+  ): {
+    completedSections: string[];
+    newCurrentSection: string[];
+    inUsageSection: boolean;
+    sectionLevel: number;
+  } {
+    const level = this.getHeaderLevel(line);
+    const isUsageHeader = this.isUsageHeader(line);
+    const completedSections: string[] = [];
+
+    if (isUsageHeader) {
+      if (currentSection.length > 0) {
+        completedSections.push(currentSection.join('\n'));
+      }
+      return {
+        completedSections,
+        newCurrentSection: [line],
+        inUsageSection: true,
+        sectionLevel: level,
+      };
+    }
+
+    if (inUsageSection && level <= sectionLevel) {
+      if (currentSection.length > 0) {
+        completedSections.push(currentSection.join('\n'));
+      }
+      return {
+        completedSections,
+        newCurrentSection: [],
+        inUsageSection: false,
+        sectionLevel,
+      };
+    }
+
+    if (inUsageSection) {
+      currentSection.push(line);
+    }
+
+    return {
+      completedSections,
+      newCurrentSection: currentSection,
+      inUsageSection,
+      sectionLevel,
+    };
+  }
+
+  private getHeaderLevel(line: string): number {
+    return (line.match(/^#+/) || [''])[0].length;
+  }
+
+  private addFinalSection(currentSection: string[], sections: string[]): void {
     if (currentSection.length > 0) {
       sections.push(currentSection.join('\n'));
     }
-
-    return sections;
   }
 
   private isUsageHeader(line: string): boolean {
@@ -121,52 +169,54 @@ export class ReadmeParser {
   }
 
   private generateExampleTitle(code: string, language: string): string {
-    // Try to infer title from code content
     const firstLine = code.split('\n')[0].trim();
     
-    if (language === 'bash' || language === 'shell' || language === 'sh') {
-      if (firstLine.includes('gem install') || firstLine.includes('bundle add')) {
-        return 'Installation';
-      }
-      if (firstLine.includes('bundle install') || firstLine.includes('bundle exec')) {
-        return 'Bundle Usage';
-      }
-      return 'Command Line Usage';
-    }
+    const titleGenerators: Record<string, () => string> = {
+      bash: () => this.generateShellTitle(firstLine),
+      shell: () => this.generateShellTitle(firstLine),
+      sh: () => this.generateShellTitle(firstLine),
+      ruby: () => this.generateRubyTitle(firstLine, code),
+      rb: () => this.generateRubyTitle(firstLine, code),
+      gemfile: () => 'Gemfile Configuration',
+      yaml: () => this.generateYamlTitle(code),
+      yml: () => this.generateYamlTitle(code),
+      json: () => 'JSON Configuration',
+      erb: () => 'Template Example',
+      html: () => 'Template Example',
+    };
 
-    if (language === 'ruby' || language === 'rb') {
-      if (firstLine.includes('require ') || firstLine.includes('require_relative')) {
-        return 'Basic Usage';
-      }
-      if (code.includes('class ') || code.includes('module ')) {
-        return 'Class/Module Definition';
-      }
-      if (code.includes('def ')) {
-        return 'Method Example';
-      }
-      return 'Ruby Example';
-    }
+    const generator = titleGenerators[language];
+    return generator ? generator() : 'Code Example';
+  }
 
-    if (language === 'gemfile') {
-      return 'Gemfile Configuration';
+  private generateShellTitle(firstLine: string): string {
+    if (firstLine.includes('gem install') || firstLine.includes('bundle add')) {
+      return 'Installation';
     }
-
-    if (language === 'yaml' || language === 'yml') {
-      if (code.includes('gem:') || code.includes('rails:')) {
-        return 'Configuration';
-      }
-      return 'YAML Configuration';
+    if (firstLine.includes('bundle install') || firstLine.includes('bundle exec')) {
+      return 'Bundle Usage';
     }
+    return 'Command Line Usage';
+  }
 
-    if (language === 'json') {
-      return 'JSON Configuration';
+  private generateRubyTitle(firstLine: string, code: string): string {
+    if (firstLine.includes('require ') || firstLine.includes('require_relative')) {
+      return 'Basic Usage';
     }
-
-    if (language === 'erb' || language === 'html') {
-      return 'Template Example';
+    if (code.includes('class ') || code.includes('module ')) {
+      return 'Class/Module Definition';
     }
+    if (code.includes('def ')) {
+      return 'Method Example';
+    }
+    return 'Ruby Example';
+  }
 
-    return 'Code Example';
+  private generateYamlTitle(code: string): string {
+    if (code.includes('gem:') || code.includes('rails:')) {
+      return 'Configuration';
+    }
+    return 'YAML Configuration';
   }
 
   private extractExampleDescription(section: string, codeBlockIndex: number): string | undefined {
