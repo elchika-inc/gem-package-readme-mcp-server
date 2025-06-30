@@ -1,5 +1,6 @@
 import { logger } from '../utils/logger.js';
 import { handleApiError, handleHttpError, withRetry } from '../utils/error-handler.js';
+import { API_CONFIG, RUBYGEMS_API } from '../config/constants.js';
 import {
   RubyGemsGemInfo,
   RubyGemsSearchResponse,
@@ -9,15 +10,15 @@ import {
 } from '../types/index.js';
 
 export class RubyGemsApiClient {
-  private readonly baseUrl = 'https://rubygems.org/api/v1';
+  private readonly baseUrl = RUBYGEMS_API.BASE_URL;
   private readonly timeout: number;
 
   constructor(timeout?: number) {
-    this.timeout = timeout || 30000;
+    this.timeout = timeout || API_CONFIG.TIMEOUT;
   }
 
   async getGemInfo(gemName: string): Promise<RubyGemsGemInfo> {
-    const url = `${this.baseUrl}/gems/${encodeURIComponent(gemName)}.json`;
+    const url = `${this.baseUrl}${RUBYGEMS_API.ENDPOINTS.GEM_INFO(gemName)}`;
     
     return withRetry(async () => {
       logger.debug(`Fetching gem info from RubyGems: ${gemName}`);
@@ -28,7 +29,7 @@ export class RubyGemsApiClient {
       try {
         const headers: Record<string, string> = {
           'Accept': 'application/json',
-          'User-Agent': 'gem-package-readme-mcp/1.0.0',
+          'User-Agent': API_CONFIG.USER_AGENT,
         };
 
         const response = await fetch(url, {
@@ -54,11 +55,11 @@ export class RubyGemsApiClient {
       } finally {
         clearTimeout(timeoutId);
       }
-    }, 3, 1000, `RubyGems API getGemInfo(${gemName})`);
+    }, API_CONFIG.MAX_RETRIES, API_CONFIG.RETRY_DELAY, `RubyGems API getGemInfo(${gemName})`);
   }
 
   async getGemVersions(gemName: string): Promise<RubyGemsVersionsResponse[]> {
-    const url = `${this.baseUrl}/gems/${encodeURIComponent(gemName)}/versions.json`;
+    const url = `${this.baseUrl}${RUBYGEMS_API.ENDPOINTS.GEM_VERSIONS(gemName)}`;
     
     return withRetry(async () => {
       logger.debug(`Fetching gem versions from RubyGems: ${gemName}`);
@@ -69,7 +70,7 @@ export class RubyGemsApiClient {
       try {
         const headers: Record<string, string> = {
           'Accept': 'application/json',
-          'User-Agent': 'gem-package-readme-mcp/1.0.0',
+          'User-Agent': API_CONFIG.USER_AGENT,
         };
 
         const response = await fetch(url, {
@@ -95,11 +96,11 @@ export class RubyGemsApiClient {
       } finally {
         clearTimeout(timeoutId);
       }
-    }, 3, 1000, `RubyGems API getGemVersions(${gemName})`);
+    }, API_CONFIG.MAX_RETRIES, API_CONFIG.RETRY_DELAY, `RubyGems API getGemVersions(${gemName})`);
   }
 
   async getSpecificVersion(gemName: string, version: string): Promise<RubyGemsGemInfo> {
-    const url = `${this.baseUrl}/gems/${encodeURIComponent(gemName)}/versions/${encodeURIComponent(version)}.json`;
+    const url = `${this.baseUrl}${RUBYGEMS_API.ENDPOINTS.SPECIFIC_VERSION(gemName, version)}`;
     
     return withRetry(async () => {
       logger.debug(`Fetching specific gem version from RubyGems: ${gemName}@${version}`);
@@ -110,7 +111,7 @@ export class RubyGemsApiClient {
       try {
         const headers: Record<string, string> = {
           'Accept': 'application/json',
-          'User-Agent': 'gem-package-readme-mcp/1.0.0',
+          'User-Agent': API_CONFIG.USER_AGENT,
         };
 
         const response = await fetch(url, {
@@ -136,11 +137,11 @@ export class RubyGemsApiClient {
       } finally {
         clearTimeout(timeoutId);
       }
-    }, 3, 1000, `RubyGems API getSpecificVersion(${gemName}@${version})`);
+    }, API_CONFIG.MAX_RETRIES, API_CONFIG.RETRY_DELAY, `RubyGems API getSpecificVersion(${gemName}@${version})`);
   }
 
   async searchGems(query: string, limit?: number): Promise<RubyGemsSearchResponse[]> {
-    const url = new URL(`${this.baseUrl}/search.json`);
+    const url = new URL(`${this.baseUrl}${RUBYGEMS_API.ENDPOINTS.SEARCH}`);
     url.searchParams.set('query', query);
     
     return withRetry(async () => {
@@ -152,7 +153,7 @@ export class RubyGemsApiClient {
       try {
         const headers: Record<string, string> = {
           'Accept': 'application/json',
-          'User-Agent': 'gem-package-readme-mcp/1.0.0',
+          'User-Agent': API_CONFIG.USER_AGENT,
         };
 
         const response = await fetch(url.toString(), {
@@ -181,7 +182,7 @@ export class RubyGemsApiClient {
       } finally {
         clearTimeout(timeoutId);
       }
-    }, 3, 1000, `RubyGems API searchGems("${query}")`);
+    }, API_CONFIG.MAX_RETRIES, API_CONFIG.RETRY_DELAY, `RubyGems API searchGems("${query}")`);
   }
 
   async getGemDependencies(gemName: string, version?: string): Promise<{ runtime: any[]; development: any[] }> {
